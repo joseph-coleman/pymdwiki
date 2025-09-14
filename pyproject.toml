@@ -5,6 +5,7 @@ requires-python = ">=3.13"
 dependencies = [
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
+    "latex2mathml>=3.78.1",
     "markdown>=3.9",
     "pygments>=2.19.2",
     "python-multipart>=0.0.20",
