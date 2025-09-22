@@ -1,10 +1,12 @@
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse, RedirectResponse, Response, FileResponse
+from starlette.responses import HTMLResponse, RedirectResponse, FileResponse
 from starlette.exceptions import HTTPException
 from starlette.routing import Route
 
+# from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader
 
-import json
+# import json
 from urllib.parse import unquote
 from pathlib import Path
 import os
@@ -13,129 +15,20 @@ FILE_PATH = os.getenv("DATA_DIR", "wiki")
 os.makedirs(FILE_PATH, exist_ok=True)
 
 import markdown
-from markdown.extensions import Extension
-from markdown.preprocessors import Preprocessor
-from markdown.blockprocessors import BlockProcessor
-from markdown.inlinepatterns import InlineProcessor
-import xml.etree.ElementTree as etree
-import re
 
+# from markdown.extensions import Extension
+# from markdown.preprocessors import Preprocessor
+# from markdown.blockprocessors import BlockProcessor
+# from markdown.inlinepatterns import InlineProcessor
+# import xml.etree.ElementTree as etree
+# import re
 
-class ImageEmbedInlineProcessor(InlineProcessor):
-    def handleMatch(self, m, data):
-        src = m.group(1)
-        img = etree.Element("img")
-        img.set("src", src)
-        img.set("alt", "")
-        return img, m.start(0), m.end(0)
-
-
-class ImageEmbedExtension(Extension):
-    def extendMarkdown(self, md):
-        IMAGE_EMBED_RE = r"!\[\[([^\]]+)\]\]"  # Matches ![[filename]]
-        md.inlinePatterns.register(
-            ImageEmbedInlineProcessor(IMAGE_EMBED_RE, md), "image_embed", 175
-        )
-
-
-class StrikeThroughInlineProcessor(InlineProcessor):
-    def handleMatch(self, m, data):
-        strike_through = etree.Element("s")
-        strike_through.text = m.group(1)
-        return strike_through, m.start(0), m.end(0)
-
-
-class StrikeThroughExtension(Extension):
-    def extendMarkdown(self, md):
-        MD_RE = r"~~(.*?)~~"
-        md.inlinePatterns.register(
-            StrikeThroughInlineProcessor(MD_RE, md), "strikethrough", 175
-        )
-
-
-class HighLightInlineProcessor(InlineProcessor):
-    def handleMatch(self, m, data):
-        strike_through = etree.Element("mark")
-        strike_through.text = m.group(1)
-        return strike_through, m.start(0), m.end(0)
-
-
-class HighLightExtension(Extension):
-    def extendMarkdown(self, md):
-        MD_RE = r"==(.*?)=="
-        md.inlinePatterns.register(
-            HighLightInlineProcessor(MD_RE, md), "highlightinline", 175
-        )
-
-
-class UnifiedMathPreprocessor(Preprocessor):
-    # """
-    # Handles all math delimiters via regex replacements:
-    #   - $...$ (inline)
-    #   - \( ... \) (inline)
-    #   - \[ ... \] (inline or block depending on position)
-    #   - $$ ... $$ (block)
-    # """
-
-    # Patterns
-    RE_BLOCK_DOLLAR = re.compile(r"^\$\$\s*\n(.*?)\n\s*\$\$", re.MULTILINE | re.DOTALL)
-    RE_BLOCK_BRACKET = re.compile(
-        r"^\s*\\\[\s*\n(.*?)\n\s*\\\]\s*$", re.MULTILINE | re.DOTALL
-    )
-    # RE_INLINE_DOLLAR = re.compile(
-    #     r"(?<!\\)(?<!\$)\$(?!\$)(.+?)(?<!\\)(?<!\$)\$(?!\$)", re.DOTALL
-    # )
-
-    RE_INLINE_DOLLAR = re.compile(
-        r"(?<!\\)(?<!\$)\$(?!\$)(?!\d)(.+?)(?<!\\)(?<!\$)\$(?!\$)", re.DOTALL
-    )
-
-    RE_INLINE_DOUBLEDOLLAR = re.compile(
-        r"(?<!\\)(?<!\$)\$\$(?!\$)(.+?)(?<!\\)(?<!\$)\$\$(?!\$)", re.DOTALL
-    )
-    RE_INLINE_PAREN = re.compile(r"(?<!\\)\\\((.+?)\\\)", re.DOTALL)
-    RE_INLINE_BRACKET = re.compile(r"(?<!\\)\\\[(.+?)\\\]", re.DOTALL)
-
-    def run(self, lines):
-        text = "\n".join(lines)
-
-        # Block: $$ ... $$
-        text = self.RE_BLOCK_DOLLAR.sub(
-            lambda m: self.md.htmlStash.store(f"\\[\n{ m.group(1).strip()}\n\\]"), text
-        )
-
-        # Block: \[ ... \] (on separate lines)
-        text = self.RE_BLOCK_BRACKET.sub(
-            lambda m: self.md.htmlStash.store(f"\\[\n{m.group(1).strip()}\n\\]"), text
-        )
-
-        # Inline Block: $$ ... $$
-        text = self.RE_INLINE_DOUBLEDOLLAR.sub(
-            lambda m: self.md.htmlStash.store(f"\\[{m.group(1).strip()}\\]"), text
-        )
-
-        # Inline: $...$
-        text = self.RE_INLINE_DOLLAR.sub(
-            lambda m: self.md.htmlStash.store(f"\\({m.group(1).strip()}\\)"), text
-        )
-
-        # Inline: \( ... \)
-        text = self.RE_INLINE_PAREN.sub(
-            lambda m: self.md.htmlStash.store(f"\\(\n{m.group(1).strip()}\n\\)"), text
-        )
-
-        # Inline: \[ ... \]
-        text = self.RE_INLINE_BRACKET.sub(
-            lambda m: self.md.htmlStash.store(f"\\[\n{m.group(1).strip()}\n\\]"), text
-        )
-
-        return text.split("\n")
-
-
-class LaTeXExtension(Extension):
-    def extendMarkdown(self, md):
-        md.preprocessors.register(UnifiedMathPreprocessor(md), "unified-math", 25)
-
+from src.markdown_extensions import (
+    LaTeXExtension,
+    StrikeThroughExtension,
+    HighLightExtension,
+    ImageEmbedExtension,
+)
 
 MD_EXTENSIONS = [
     LaTeXExtension(),
@@ -195,10 +88,14 @@ MD_EXTENSION_CONFIG = {
         "smart_angled_quotes": True,  # default False
         "smart_ellipses": True,
         "substitutions": {
-            "left-single-quote": "&sbquo;",  # sb is not a typo!
-            "right-single-quote": "&lsquo;",
-            "left-double-quote": "&bdquo;",
-            "right-double-quote": "&ldquo;",
+            "left-single-quote": "&lsquo;",  # sb is not a typo!
+            "right-single-quote": "&rsquo;",
+            "left-double-quote": "&ldquo;",
+            "right-double-quote": "&rdquo;",
+            # "left-single-quote": "&sbquo;",  # sb is not a typo!
+            # "right-single-quote": "&lsquo;",
+            # "left-double-quote": "&bdquo;",
+            # "right-double-quote": "&ldquo;",
         },
     },
     "toc": {
@@ -226,35 +123,9 @@ MD_EXTENSION_CONFIG = {
 }
 
 # various pygment styles for code.
+# need to figure out how to automatically switch between light and dark mode.
 STYLE = "abap"
-# STYLE = "autumn"
-# STYLE = "borland"
-# STYLE = "bw"
-# STYLE = "coffee"
-# STYLE = "colorful"
-# STYLE = "default"
-# STYLE = "dracula"
-# STYLE = "emacs"
-# STYLE = "github-dark"
-# STYLE = "lightbulb"
-# STYLE = "lovelace"
-# STYLE = "monokai"
-# STYLE = "murphy"
-# STYLE = "native"
-# STYLE = "nord-darker"
-# STYLE = "nord"
-# STYLE = "paraiso-light"
-# STYLE = "pastie"
-# STYLE = "perldoc"
-# STYLE = "rrt"
-# STYLE = "sas"
-# STYLE = "solarized-dark"
-# STYLE = "solarized-light"
-# STYLE = "staroffice"
-# STYLE = "tango"
-# STYLE = "vs"
-# STYLE = "xcode"
-# STYLE = "zenburn"  # dark background
+# STYLE = "gruvbox-dark"
 
 
 def parse_url_path(path):
@@ -299,6 +170,8 @@ async def catch_all(request):
     # Do we want to redirect to /wiki/document if
     # it exists, or to /edit/document if it doesn't?
 
+    TEMPLATE = "default"
+
     url_pieces = parse_url_path(request.url.path)
     path = url_pieces["path"]
     path_list = url_pieces["path_list"]
@@ -312,8 +185,17 @@ async def catch_all(request):
         if Path(file_path).exists():
             # print("fave fave fave fave fave fave")
             return FileResponse(file_path, filename=file_name)
-
         raise HTTPException(status_code=404, detail="File not found.")
+
+    # resources in the template folder.
+    if path_list[0] == "template":
+        path_list.pop(0)
+        path_list.pop(0)
+        template_path = os.path.join("template", TEMPLATE)
+        if file_ext in ["css", "js", "png", "jpg", "jpeg", "gif"]:
+            file_path = os.path.join(os.getcwd(), template_path, *path_list, file_name)
+            if Path(file_path).exists():
+                return FileResponse(file_path, filename=file_name)
 
     # should config a default start page
     return RedirectResponse("/wiki/main")
@@ -322,6 +204,14 @@ async def catch_all(request):
 # /wiki/*
 async def view_document(request):
     print("VIEW DOCUMENT")
+
+    TEMPLATE = "default"
+    template_path = style_path = os.path.join("template", TEMPLATE)
+    jinja_env = Environment(loader=FileSystemLoader(template_path))
+    doc_template = jinja_env.get_template("document.html")
+
+    doc_data = {}
+
     # Extract the path from the request
     path = request.url.path
     query = request.url.query
@@ -342,10 +232,16 @@ async def view_document(request):
     with open(style_path, "r") as style_file:
         style = style_file.read()
 
+    doc_data["css"] = f"<style>{style}</style>"
+
     if file_ext == "":
         file_path = os.path.join(FILE_PATH, *path_list, file_name) + ".md"
+        page_name = file_name_base
     elif file_ext == "md":
         file_path = os.path.join(FILE_PATH, *path_list, file_name)
+        page_name = file_name_base
+    else:
+        page_name = file_name
 
     if len(file_path) > 0 and Path(file_path).exists():
         md = markdown.Markdown(
@@ -357,27 +253,30 @@ async def view_document(request):
             html = file.read()
         html = md.convert(html)
 
-        response_content = f"""<!DOCTYPE html>
-            <html>
-                <head>
-                <style>{style}</style>
+        doc_data["title"] = file_name_base
+        doc_data["pagename"] = page_name
 
+        doc_data[
+            "scripts"
+        ] = """
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" integrity="sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP" crossorigin="anonymous">
                 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" integrity="sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6" crossorigin="anonymous"></script>
                 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js" integrity="sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh" crossorigin="anonymous"></script>
                 <script>
-                    document.addEventListener("DOMContentLoaded", function() {{
-                        renderMathInElement(document.body, {{
+                    document.addEventListener("DOMContentLoaded", function() {
+                        renderMathInElement(document.body, {
                         delimiters: [
-                            {{left: '\\\\(', right: '\\\\)', display: false}},
-                            {{left: '\\\\[', right: '\\\\]', display: true}}
+                            {left: '\\\\(', right: '\\\\)', display: false},
+                            {left: '\\\\[', right: '\\\\]', display: true}
                         ],
                         throwOnError : false
-                        }});
-                    }});
-                </script>
-                </head>
-                <body>{html}</body></html>"""
+                        });
+                    });
+                </script>"""
+
+        doc_data["document"] = html
+
+        response_content = doc_template.render(doc_data)
 
         return HTMLResponse(response_content)
     else:

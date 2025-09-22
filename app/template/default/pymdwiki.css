@@ -1,0 +1,200 @@
+:root {
+    color-scheme: light dark;
+    --base-color: #ffd05f;
+    --background: #fbf4eb;
+    --foreground: #1c170b;
+    --lightest: hsl(from var(--base-color) h calc(s * 1.4) calc(l * 1.6));
+    --lighter: hsl(from var(--base-color) h calc(s * 1.2) calc(l * 1.3));
+    --darker: hsl(from var(--base-color) h calc(s * 0.8) calc(l * 0.7));
+    --darkest: hsl(from var(--base-color) h calc(s * 0.6) calc(l * 0.5));
+    --complement: hsl(from var(--base-color) calc(h + 180) s l);
+    --link-color: #d34216;
+    --link-highlight: hsl(from var(--link-color) h calc(s * 1.2) calc(l * 1.3));
+    --link-dark: hsl(from var(--link-color) h calc(s * 0.8) calc(l * 0.7));
+    --link-visited: hsl(from var(--link-color) calc(h - 120) calc(s * 0.8) calc(l * 0.7));
+}
+
+
+@media (prefers-color-scheme: light) {
+    html {
+        background-color: var(--background);
+        color: var(--foreground);
+    }
+
+    @import url('adap.css');
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --darkest: hsl(from var(--base-color) h calc(s * 1.4) calc(l * 1.6));
+        --darker: hsl(from var(--base-color) h calc(s * 1.2) calc(l * 1.3));
+        --lighter: hsl(from var(--base-color) h calc(s * 0.8) calc(l * 0.7));
+        --lightest: hsl(from var(--base-color) h calc(s * 0.6) calc(l * 0.5));
+        --link-dark: hsl(from var(--link-color) h calc(s * 1.2) calc(l * 1.3));
+        --link-highlight: hsl(from var(--link-color) h calc(s * 0.8) calc(l * 0.7));
+        --link-visited: hsl(from var(--link-color) calc(h + 120) calc(s * 0.8) calc(l * 0.7));
+    }
+
+    html {
+        background-color: var(--foreground);
+        color: var(--background);
+    }
+
+    @import url('gruvbox-dark.css')
+}
+
+body {
+    /*padding: 1em;*/
+    font-size: 13pt;
+    /* System Fonts with system-ui */
+    /* font-family: system-ui, "Segoe UI", Roboto, Helvetica, Verdana, Tahoma, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol"; */
+    font-family: Helvetica, Arial, system-ui, "Segoe UI", Roboto, sans-serif, Verdana, Tahoma, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+    /* font-family: Roboto; */
+}
+
+body,
+div,
+span,
+p,
+a,
+img,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+input {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+}
+
+/*
+ul,
+ol,
+li,
+blockquote,*/
+
+.codehilite {
+    overflow: auto;
+}
+
+
+/*ul,li,ol{list-style:none;}*/
+a {
+    outline: none;
+    text-decoration: none;
+    color: var(--link-color);
+}
+
+a:hover {
+    color: var(--link-highlight);
+}
+
+a:visited {
+    color: var(--link-visited);
+}
+
+a:active {
+    color: var(--link-dark);
+}
+
+
+#header,
+#footer {
+    background-color: var(--darker);
+    color: light-dark(var(--background), var(--foreground));
+    /* color: light-dark(lime, magenta); */
+
+    & a {
+        text-decoration: underline;
+        font-weight: bolder;
+    }
+
+    & a:hover {
+
+        text-decoration: dotted;
+    }
+}
+
+#footer {
+    margin-top: 5em;
+}
+
+#document {
+    margin: auto;
+    width: min(80%, 800px);
+    padding: 3% min(15%, 250px) 15% min(15%, 250px);
+    padding: 5px;
+
+
+
+    & #pagetitle {
+        font-size: 300%;
+        text-align: center;
+        border-bottom: 1px solid var(--darker);
+        /*filter: drop-shadow(0 5px 5px var(--darker));*/
+        box-shadow: 0px 5px 5px -5px var(--darker);
+        margin-bottom: 1em;
+    }
+
+    & #pagetitle a {
+        filter: none;
+    }
+
+    & h1 {
+
+        color: light-dark(#b53515, #db4019);
+    }
+
+
+    & h2 {
+        color: light-dark(#b53515, #db4019);
+        ;
+    }
+
+    & blockquote {
+        border-left: 2px solid light-dark(var(--darker), var(--lighter));
+        padding-top: 1em;
+        padding-left: 1em;
+        padding-bottom: 1em;
+    }
+
+    & table th,
+    & table tr:nth-child(even) {
+        background-color: var(--lightest);
+    }
+
+
+}
+
+
+
+@media (max-width:816px),
+(max-device-width: 816px) {
+
+    #document {
+        font-size: 150%;
+        background-color: rgb(27, 164, 111);
+        padding: 0;
+        margin: auto;
+        width: 99%;
+    }
+
+}
+
+
+@media (max-width:639px),
+(max-device-width: 639px) {
+
+    #document {
+        font-size: 200%;
+        background-color: aqua;
+        padding: 0;
+        margin: auto;
+        width: 99%;
+    }
+
+}

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{title}}</title>
+    <style></style>
+    <link rel="stylesheet" type="text/css" href="/template/default/pymdwiki.css" />
+
+    {{scripts}}
+    {{css}}
+</head>
+
+<body>
+    {% include "_header.html" %}
+
+    {% block content %}{% endblock %}
+
+    {% include "_footer.html" %}
+</body>
+
+</html>
