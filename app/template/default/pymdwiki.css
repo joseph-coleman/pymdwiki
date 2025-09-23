@@ -64,7 +64,11 @@ h3,
 h4,
 h5,
 h6,
-input {
+input,
+ul,
+ol,
+li,
+blockquote {
     margin: 0;
     padding: 0;
     border: 0;
@@ -76,6 +80,15 @@ ul,
 ol,
 li,
 blockquote,*/
+
+#document {
+
+    & ul,
+    & ol {
+        padding-left: 1em;
+    }
+
+}
 
 .codehilite {
     overflow: auto;
@@ -129,8 +142,6 @@ a:active {
     padding: 3% min(15%, 250px) 15% min(15%, 250px);
     padding: 5px;
 
-
-
     & #pagetitle {
         font-size: 300%;
         text-align: center;
@@ -145,15 +156,34 @@ a:active {
     }
 
     & h1 {
-
-        color: light-dark(#b53515, #db4019);
+        color: var(--darkest);
+        /* color: var(--lightest);
+        background-color: var(--darker);
+        margin-bottom: 0.5em; */
+        margin-top: 0.5em;
+        border-top: 1px solid var(--base-color);
     }
-
 
     & h2 {
-        color: light-dark(#b53515, #db4019);
-        ;
+        color: var(--darker);
+        /* color: var(--lighter);
+        background-color: var(--darker);
+        margin-bottom: 0.25em; */
+        margin-top: 0.25em;
     }
+
+    & h3,
+    & h4 {
+        color: var(--darker);
+        margin-top: 0.15em;
+
+    }
+
+    & h5 {
+        color: var(--darkest);
+        margin-top: 0.05em;
+    }
+
 
     & blockquote {
         border-left: 2px solid light-dark(var(--darker), var(--lighter));
@@ -167,6 +197,10 @@ a:active {
         background-color: var(--lightest);
     }
 
+    & textarea {
+        width: 100%;
+        height: auto;
+    }
 
 }
 

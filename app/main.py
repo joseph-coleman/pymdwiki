@@ -3,6 +3,8 @@ from starlette.responses import HTMLResponse, RedirectResponse, FileResponse
 from starlette.exceptions import HTTPException
 from starlette.routing import Route
 
+from html import escape
+
 # from jinja2 import Template
 from jinja2 import Environment, FileSystemLoader
 
@@ -298,6 +300,13 @@ async def view_document(request):
 # /edit/
 async def edit_document(request):
 
+    TEMPLATE = "default"
+    template_path = style_path = os.path.join("template", TEMPLATE)
+    jinja_env = Environment(loader=FileSystemLoader(template_path))
+    doc_template = jinja_env.get_template("edit.html")
+
+    doc_data = {}
+
     url_pieces = parse_url_path(request.url.path)
 
     path = url_pieces["path"]
@@ -313,33 +322,56 @@ async def edit_document(request):
     with open(style_path, "r") as style_file:
         style = style_file.read()
 
+    doc_data["css"] = f"<style>{style}</style>"
+
     if file_ext == "":
         file_path = os.path.join(FILE_PATH, *path_list, file_name) + ".md"
+        page_name = file_name_base
     elif file_ext == "md":
         file_path = os.path.join(FILE_PATH, *path_list, file_name)
+        page_name = file_name_base
+    else:
+        # what happens when the file isn't markdown? yikes!
+        page_name = file_name
 
     if len(file_path) > 0 and Path(file_path).exists():
         with open(file_path, "r") as file:
             raw_markdown = file.read()
         page_title = f"Editing {file_name}"
+        doc_data["document_mode"] = "edit"
     else:
         # file doesn't exist,
         raw_markdown = f"# Edit \n Edit your document {file_name}"  # template?
         page_title = f"Creating {file_name}"
+        doc_data["document_mode"] = "create"
 
-    response_content = f"""<!DOCTYPE html>
-        <html>
-            <head>
-            <style>{style}</style>
-            </head><body>
-            <h1>{page_title}</h1>
-            <form action="/save/" method="post" name="edit_document_form">
-            <textarea name="markdown" style="width:100%;" rows=50>{raw_markdown}</textarea>
-            <br/>
-            <input type="submit" value="Save" />
-            <input type="hidden" name="document_name" value="{file_path}">
-            <button name="delete_button" value="true">Delete</button>
-            </form></body></html>"""
+    doc_data["title"] = file_name_base
+    doc_data["pagename"] = page_name
+
+    # doc_data[
+    #     "scripts"
+    # ] = """
+    #         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" integrity="sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP" crossorigin="anonymous">
+    #         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" integrity="sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6" crossorigin="anonymous"></script>
+    #         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js" integrity="sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh" crossorigin="anonymous"></script>
+    #         <script>
+    #             document.addEventListener("DOMContentLoaded", function() {
+    #                 renderMathInElement(document.body, {
+    #                 delimiters: [
+    #                     {left: '\\\\(', right: '\\\\)', display: false},
+    #                     {left: '\\\\[', right: '\\\\]', display: true}
+    #                 ],
+    #                 throwOnError : false
+    #                 });
+    #             });
+    #         </script>"""
+
+    doc_data["scripts"] = ""
+
+    doc_data["document"] = escape(raw_markdown)
+    doc_data["file_path"] = escape(file_path)
+
+    response_content = doc_template.render(doc_data)
 
     return HTMLResponse(response_content)
 
