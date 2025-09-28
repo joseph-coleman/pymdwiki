@@ -1,9 +1,13 @@
 {% extends "base.html" %}
 
+{% block toc %}
+<div id="toc">{{toc}}</div>
+{% endblock%}
+
 {% block content %}
 <div id="document">
 
-    <p id="pagetitle"><a href="/edit/{{pagename}}">{{title}}</a></p>
+    <p id="pagetitle"><a href="/edit/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">{{title}}</a></p>
 
     {{ document }}
 

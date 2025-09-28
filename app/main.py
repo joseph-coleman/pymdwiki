@@ -4,38 +4,38 @@ from starlette.exceptions import HTTPException
 from starlette.routing import Route
 
 from html import escape
+import datetime
 
 # from jinja2 import Template
 from jinja2 import Environment, FileSystemLoader
 
-# import json
+import json
 from urllib.parse import unquote
 from pathlib import Path
 import os
+from pathlib import PurePosixPath
 
 FILE_PATH = os.getenv("DATA_DIR", "wiki")
 os.makedirs(FILE_PATH, exist_ok=True)
 
+RESERVED_PATHS = ["wiki", "edit", "save", "delete"]
+DEFAULT_WIKI_PAGE = "main"
+
+TEMPLATE = "default"
+
 import markdown
 
-# from markdown.extensions import Extension
-# from markdown.preprocessors import Preprocessor
-# from markdown.blockprocessors import BlockProcessor
-# from markdown.inlinepatterns import InlineProcessor
-# import xml.etree.ElementTree as etree
-# import re
 
 from src.markdown_extensions import (
     LaTeXExtension,
     StrikeThroughExtension,
     HighLightExtension,
     ImageEmbedExtension,
+    WikiLinkExtension,
 )
 
 MD_EXTENSIONS = [
     LaTeXExtension(),
-    # LaTeXBlockExtension(),
-    # BoxExtension(),
     StrikeThroughExtension(),
     HighLightExtension(),
     "extra",
@@ -48,10 +48,13 @@ MD_EXTENSIONS = [
     "sane_lists",
     "smarty",
     "toc",
-    "wikilinks",
     ImageEmbedExtension(),
+    # WikiLinkExtension(), specified below with parameters
     #
 ]
+# these configs are only for builtin extensions,
+# config passing for custom extensions needs to occur when instatiating
+# the object
 MD_EXTENSION_CONFIG = {
     "extra": {
         "abbr": {},  # glossary: A dictionary where the ky is the abbreviation and the value is the definition.
@@ -105,37 +108,32 @@ MD_EXTENSION_CONFIG = {
         "title": None,  # title to insert in the toc <div>
         "title_class": "toctitle",
         "toc_class": "toc",
-        "anchorlink": False,  # True headers link to themselves,
+        "anchorlink": False,  # True, headers link to themselves,
         "anchorlink_class": "toclink",
         "permalink": False,  # True or string to generate links at end of each header.  True uses &para;
         "permalink_class": "headerlink",
         "permalink_title": "Permanent link",
         "permalink_leading": False,  # True if permanant links should be generated
-        "baselevel": 1,  # adjust header size allowed, 2 makds #5 = #6, 3 makes #4=#5=#6,
+        "baselevel": 1,  # adjust header size allowed, 2 makes #5 = #6, 3 makes #4=#5=#6,
         # "slugify": callable to generate anchors
         "separator": "-",  # replaces white space in id
         "toc_depth": 6,  # bottom depth of header to include.
     },
-    "wikilinks": {
-        "base_url": "/wiki/",
-        "end_url": "/",
-        "html_class": "wikilink",
-        # "build_url": callable which formats the URL from its parts, probalby need this for distinguishing urls that don't exist yet.
-    },
 }
-
-# various pygment styles for code.
-# need to figure out how to automatically switch between light and dark mode.
-STYLE = "abap"
-# STYLE = "gruvbox-dark"
 
 
 def parse_url_path(path):
+    """helper to break url into some commonly used components"""
     path = unquote(path)
     while ".." in path:
         path = path.replace("..", "")
+    while "//" in path:
+        path = path.replace("//", "/")
     path_split = path.split("/")
     path_split = [each for each in path_split if each]
+
+    if path_split[0] in RESERVED_PATHS:
+        path_split.pop(0)
 
     if path_split:
         file_name = path_split.pop()
@@ -150,9 +148,9 @@ def parse_url_path(path):
             file_name_no_ext = file_name
     else:
         path_split = [""]
-        file_name = ""
+        file_name = DEFAULT_WIKI_PAGE
         file_ext = ""
-        file_name_no_ext = ""
+        file_name_no_ext = DEFAULT_WIKI_PAGE
 
     response = {
         "path": "/".join(path_split),
@@ -164,6 +162,70 @@ def parse_url_path(path):
     return response
 
 
+def markdown_page_name(url_pieces):
+    """helper for cleaner urls to file.md files"""
+    path = url_pieces["path"]
+    path_list = url_pieces["path_list"]
+    file_name = url_pieces["file_name"]
+    file_ext = url_pieces["file_ext"]
+    file_name_base = url_pieces["file_name_no_ext"]
+
+    if file_ext == "":
+        page_name = file_name_base
+    elif file_ext == "md":
+        page_name = file_name_base
+    else:
+        page_name = file_name
+
+    return page_name
+
+
+def wikilink_page_check(resolved_name):
+    """check if a wiki link points to an actual documenbt"""
+
+    path = PurePosixPath(resolved_name)
+    parts = []
+    for part in path.parts:
+        if part == "..":
+            if parts and parts[-1] != "..":
+                parts.pop()
+            else:
+                parts.append(part)
+        elif part != ".":
+            parts.append(part)
+    resolved_path = "/" + "/".join(parts)
+
+    # resolved_path = path.resolve()
+    url_pieces = parse_url_path(resolved_path)
+    file_exists = markdown_file_exists(url_pieces)
+
+    if not file_exists:
+        return False
+    return True
+
+
+def markdown_file_exists(url_pieces):
+    """Determines if a markdown url exists as a file"""
+
+    path = url_pieces["path"]
+    path_list = url_pieces["path_list"]
+    file_name = url_pieces["file_name"]
+    file_ext = url_pieces["file_ext"]
+    file_name_base = url_pieces["file_name_no_ext"]
+
+    file_path = ""
+
+    if file_ext == "":
+        file_path = os.path.join(FILE_PATH, *path_list, file_name) + ".md"
+    elif file_ext == "md":
+        file_path = os.path.join(FILE_PATH, *path_list, file_name)
+
+    if len(file_path) > 0 and Path(file_path).exists():
+        return file_path
+    else:
+        return False
+
+
 # Define the catch-all endpoint
 async def catch_all(request):
 
@@ -172,20 +234,16 @@ async def catch_all(request):
     # Do we want to redirect to /wiki/document if
     # it exists, or to /edit/document if it doesn't?
 
-    TEMPLATE = "default"
-
     url_pieces = parse_url_path(request.url.path)
     path = url_pieces["path"]
     path_list = url_pieces["path_list"]
     file_name = url_pieces["file_name"]
     file_ext = url_pieces["file_ext"]
 
+    # kind of annoying that browsers always request this file.
     if file_name == "favicon.ico":
-        # print("ico ico ico ico ico ico")
         file_path = os.path.join(os.getcwd(), file_name)
-        # print(file_path)
         if Path(file_path).exists():
-            # print("fave fave fave fave fave fave")
             return FileResponse(file_path, filename=file_name)
         raise HTTPException(status_code=404, detail="File not found.")
 
@@ -200,14 +258,12 @@ async def catch_all(request):
                 return FileResponse(file_path, filename=file_name)
 
     # should config a default start page
-    return RedirectResponse("/wiki/main")
+    return RedirectResponse(f"/wiki/{DEFAULT_WIKI_PAGE}")
 
 
 # /wiki/*
 async def view_document(request):
-    print("VIEW DOCUMENT")
 
-    TEMPLATE = "default"
     template_path = style_path = os.path.join("template", TEMPLATE)
     jinja_env = Environment(loader=FileSystemLoader(template_path))
     doc_template = jinja_env.get_template("document.html")
@@ -227,27 +283,22 @@ async def view_document(request):
     file_ext = url_pieces["file_ext"]
     file_name_base = url_pieces["file_name_no_ext"]
 
-    path_list.pop(0)
+    file_path = markdown_file_exists(url_pieces)
 
-    file_path = ""
-    style_path = os.path.join("template", "style", STYLE) + ".css"
-    with open(style_path, "r") as style_file:
-        style = style_file.read()
+    if file_path:
 
-    doc_data["css"] = f"<style>{style}</style>"
+        page_name = markdown_page_name(url_pieces)
 
-    if file_ext == "":
-        file_path = os.path.join(FILE_PATH, *path_list, file_name) + ".md"
-        page_name = file_name_base
-    elif file_ext == "md":
-        file_path = os.path.join(FILE_PATH, *path_list, file_name)
-        page_name = file_name_base
-    else:
-        page_name = file_name
+        dyn_extensions = MD_EXTENSIONS + [
+            WikiLinkExtension(
+                base_url="/wiki",
+                current_path=path,
+                page_exists_callback=wikilink_page_check,
+            )
+        ]
 
-    if len(file_path) > 0 and Path(file_path).exists():
         md = markdown.Markdown(
-            extensions=MD_EXTENSIONS,
+            extensions=dyn_extensions,
             extension_configs=MD_EXTENSION_CONFIG,
             output_format="html",
         )
@@ -256,8 +307,11 @@ async def view_document(request):
         html = md.convert(html)
 
         doc_data["title"] = file_name_base
-        doc_data["pagename"] = page_name
+        doc_data["page_name"] = page_name
+        doc_data["page_path"] = path
+        doc_data["toc"] = md.toc
 
+        # this here allows for including it only on the document page.
         doc_data[
             "scripts"
         ] = """
@@ -282,26 +336,22 @@ async def view_document(request):
 
         return HTMLResponse(response_content)
     else:
-        # print("EEEEEEEEEEEE")
         if file_ext in ["png", "jpg", "jpeg", "gif"]:
-            # print("FFFFFFFFF")
             file_path = os.path.join(FILE_PATH, *path_list, file_name)
-            # print(file_path)
             if Path(file_path).exists():
                 return FileResponse(file_path, filename=file_name)
             else:
-                pass
-                # print("GGGGGGGG")
-        # edit page
-        response_content = f"<h1>Edit: {file_name}</h1><p>Method: {method}</p>"
-        return HTMLResponse(response_content)
+                raise HTTPException(status_code=404, detail="File not found.")
+
+        # response_content = f"<h1>Edit: {file_name}</h1><p>Method: {method}</p>"
+        # return HTMLResponse(response_content)
+        return RedirectResponse("/".join(["/edit", *path_list, file_name]))
 
 
 # /edit/
 async def edit_document(request):
 
-    TEMPLATE = "default"
-    template_path = style_path = os.path.join("template", TEMPLATE)
+    template_path = os.path.join("template", TEMPLATE)
     jinja_env = Environment(loader=FileSystemLoader(template_path))
     doc_template = jinja_env.get_template("edit.html")
 
@@ -315,14 +365,9 @@ async def edit_document(request):
     file_ext = url_pieces["file_ext"]
     file_name_base = url_pieces["file_name_no_ext"]
 
-    path_list.pop(0)
-
     file_path = ""
-    style_path = os.path.join("template", "style", STYLE) + ".css"
-    with open(style_path, "r") as style_file:
-        style = style_file.read()
 
-    doc_data["css"] = f"<style>{style}</style>"
+    # doc_data["css"] = f"<style>{style}</style>"
 
     if file_ext == "":
         file_path = os.path.join(FILE_PATH, *path_list, file_name) + ".md"
@@ -341,12 +386,13 @@ async def edit_document(request):
         doc_data["document_mode"] = "edit"
     else:
         # file doesn't exist,
-        raw_markdown = f"# Edit \n Edit your document {file_name}"  # template?
+        raw_markdown = f"""Title: {file_name}\nSummary:\nAuthors: \nDate: {datetime.datetime.now(datetime.timezone.utc)}\nKeywords: \n\n# Header \n Edit your document {file_name}"""
         page_title = f"Creating {file_name}"
         doc_data["document_mode"] = "create"
 
     doc_data["title"] = file_name_base
-    doc_data["pagename"] = page_name
+    doc_data["page_name"] = page_name
+    doc_data["page_path"] = path
 
     # doc_data[
     #     "scripts"
@@ -376,10 +422,8 @@ async def edit_document(request):
     return HTMLResponse(response_content)
 
 
-# Define the catch-all endpoint
+# /save/ process documenbt saves
 async def save_document(request):
-    print("SAVE DOCUMENT")
-
     # do we really care if this was a POST or GET?
     method = request.method
 
@@ -397,8 +441,6 @@ async def save_document(request):
     file_ext = url_pieces["file_ext"]
     file_name_base = url_pieces["file_name_no_ext"]
 
-    path_list.pop(0)  # get rid of the /wiki/ prefix.
-
     file_path = ""
     if file_ext == "":
         file_name = file_name + ".md"
@@ -412,19 +454,39 @@ async def save_document(request):
             # backup old file? versioning?
             ...
 
+        os.makedirs(os.path.join(FILE_PATH, *path_list), exist_ok=True)
+
         with open(file_path, "w") as file:
             file.write(updated_markdown)
         # do we want to catch case when we write an empty file?
 
-    return RedirectResponse(f"/{path}/{file_name_base}")
+    return RedirectResponse(f"/wiki/{path}/{file_name_base}")
+
+
+# /delete/
+async def delete_document(request):
+    ## TODO: See comments in /save/
+    ## probably makes sense to have dedicated endpoint for deletion
+    ## Not implemented yet.
+
+    print("DELETE DOCUMENT")
+
+    url_pieces = parse_url_path(document_name)
+    path = url_pieces["path"]
+    path_list = url_pieces["path_list"]
+    file_name = url_pieces["file_name"]
+    file_ext = url_pieces["file_ext"]
+    file_name_base = url_pieces["file_name_no_ext"]
+
+    return RedirectResponse(f"/edit/{path}/{file_name_base}")
 
 
 routes = [
+    Route("/delete/{path:path}", endpoint=delete_document, methods=["GET", "POST"]),
     Route("/save/{path:path}", endpoint=save_document, methods=["GET", "POST"]),
     Route("/edit/{path:path}", endpoint=edit_document, methods=["GET", "POST"]),
     Route("/wiki/{path:path}", endpoint=view_document, methods=["GET", "POST"]),
     Route("/{path:path}", endpoint=catch_all, methods=["GET", "POST"]),
 ]
-
 
 app = Starlette(debug=True, routes=routes)

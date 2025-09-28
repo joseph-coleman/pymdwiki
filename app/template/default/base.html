@@ -8,10 +8,14 @@
 
     {{scripts}}
     {{css}}
+
+
 </head>
 
 <body>
     {% include "_header.html" %}
+
+    {% block toc %}{% endblock %}
 
     {% block content %}{% endblock %}
 

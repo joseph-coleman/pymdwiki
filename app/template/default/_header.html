@@ -1,9 +1,8 @@
-<div id="header">
+<div id="document_header">
     <img src="/favicon.ico" width="128" height="128" align="right" />
-    <p>
-    <h1>{{title}}</h1> |
-    <a href="/edit/{{pagename}}">Edit</a> |
-    <a href="/delete/{{pagename}}">Delete</a> |
+    <h1>{{title}}</h1>
+    <p> |
+        <a href="/edit/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Edit</a> |
+        <a href="/delete/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Delete</a> |
     </p>
-
 </div>

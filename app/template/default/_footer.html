@@ -1,6 +1,7 @@
-<div id="footer">
+<div id="document_footer">
     <p>
-        <a href="/edit/{{pagename}}">Edit</a> |
-        <a href="/delete/{{pagename}}">Delete</a> |
+        <a href="/wiki/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">View</a> |
+        <a href="/edit/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Edit</a> |
+        <a href="/delete/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Delete</a> |
     </p>
 </div>

@@ -4,14 +4,14 @@
 
 <div id="document">
 
-    <p id="pagetitle"><a href="/edit/{{pagename}}">
-            {% if document_mode == "edit" %}
-            Edit:
-            {% elif document_mode == "create" %}
-            Create:
-            {% endif %}
-            {{title}}
-        </a></p>
+    <p id="pagetitle">
+        {% if document_mode == "edit" %}
+        <a href="/wiki/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Edit: {{title}} </a>
+        {% elif document_mode == "create" %}
+        Create: {{title}}
+        {% endif %}
+
+    </p>
 
     <form action="/save/" method="post" name="edit_document_form">
         <textarea name="markdown" style="width:100%;" rows=50>{{document}}</textarea>
