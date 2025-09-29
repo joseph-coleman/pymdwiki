@@ -173,6 +173,17 @@ a:active {
     float: left;
     clear: both;
     padding-left: 1px;
+    padding-bottom: 5em;
+    opacity: 0.05;
+    transition-property: opacity;
+    transition: 1s;
+    transition-timing-function: ease;
+    transition-delay: 15s;
+
+    position: sticky;
+    top: 0;
+    max-height: 100vh;
+    overflow-y: auto;
 
     & ul,
     & ol {
@@ -185,6 +196,13 @@ a:active {
     & ol {
         list-style: none;
     }
+}
+
+#toc:hover {
+    opacity: 1.0;
+    transition-property: opacity;
+    transition: 0.25s;
+    transition-timing-function: ease-out;
 }
 
 #document {
