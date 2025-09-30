@@ -1,3 +1,5 @@
+""" """
+
 from markdown.extensions import Extension
 from markdown.preprocessors import Preprocessor
 from markdown.blockprocessors import BlockProcessor
@@ -206,6 +208,8 @@ class UnifiedMathPreprocessor(Preprocessor):
     def run(self, lines):
         text = "\n".join(lines)
 
+        original_text = text + ""
+
         # Block: $$ ... $$
         text = self.RE_BLOCK_DOLLAR.sub(
             lambda m: self.md.htmlStash.store(f"\\[\n{ m.group(1).strip()}\n\\]"), text
@@ -235,6 +239,11 @@ class UnifiedMathPreprocessor(Preprocessor):
         text = self.RE_INLINE_BRACKET.sub(
             lambda m: self.md.htmlStash.store(f"\\[\n{m.group(1).strip()}\n\\]"), text
         )
+
+        if text == original_text:
+            self.md.pymdwiki_has_latex = False
+        else:
+            self.md.pymdwiki_has_latex = True
 
         return text.split("\n")
 
