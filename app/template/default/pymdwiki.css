@@ -119,6 +119,14 @@ blockquote,*/
         border-style: inset;
     }
 
+    & a {
+        text-decoration: underline;
+    }
+
+    & #pagetitle a {
+        text-decoration: none;
+    }
+
 }
 
 .codehilite {
@@ -135,6 +143,7 @@ a {
 
 a:hover {
     color: var(--link-highlight);
+    text-decoration: underline;
 }
 
 a:visited {
@@ -158,7 +167,6 @@ a:active {
     }
 
     & a:hover {
-
         text-decoration: dotted;
     }
 }
@@ -255,14 +263,6 @@ a:active {
         margin-top: 0.05em;
     }
 
-    & a.missing {
-        text-decoration: dotted;
-    }
-
-    & a.missing::after {
-        content: "⛓️‍💥";
-        /* background-color: var(--link-dark) */
-    }
 
     & blockquote {
         border-left: 2px solid light-dark(var(--darker), var(--lighter));
@@ -281,7 +281,15 @@ a:active {
         height: auto;
     }
 
+    & a.missing {
+        text-decoration-line: underline;
+        text-decoration-style: dashed;
+    }
 
+    & a.missing::after {
+        content: "⛓️‍💥";
+        /* background-color: var(--link-dark) */
+    }
 
 }
 
@@ -289,12 +297,13 @@ a:active {
 .foo {
     border-width: 3px;
     border-style: double;
-    border-radius: 50%;
-    border-color: var(--complement);
+    border-radius: 33%;
+    border-color: var(--darkest);
 }
 
 .bar {
-    text-decoration: overline;
+    text-decoration-line: overline !important;
+    text-decoration-style: double !important;
     background-color: var(--complement);
 }
 
