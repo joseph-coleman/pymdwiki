@@ -248,6 +248,9 @@ async def catch_all(request):
         raise HTTPException(status_code=404, detail="File not found.")
 
     # resources in the template folder.
+    # anything like /template/default/page_header.jpg would get served here
+    # but forced under the current template, i.e. no sharing of resources
+    # So, really f"/template/{TEMPLATE}/page_header.jpg" would be served
     if path_list[0] == "template":
         path_list.pop(0)
         path_list.pop(0)
@@ -289,7 +292,9 @@ async def view_document(request):
 
         page_name = markdown_page_name(url_pieces)
 
-        dyn_extensions = MD_EXTENSIONS + [
+        # custom extensions need to be configured on creation,
+        # and this one needs the current path
+        all_extensions = MD_EXTENSIONS + [
             WikiLinkExtension(
                 base_url="/wiki",
                 current_path=path,
@@ -298,7 +303,7 @@ async def view_document(request):
         ]
 
         md = markdown.Markdown(
-            extensions=dyn_extensions,
+            extensions=all_extensions,
             extension_configs=MD_EXTENSION_CONFIG,
             output_format="html",
         )
@@ -471,7 +476,7 @@ async def delete_document(request):
 
     print("DELETE DOCUMENT")
 
-    url_pieces = parse_url_path(document_name)
+    url_pieces = parse_url_path(request.url.path)
     path = url_pieces["path"]
     path_list = url_pieces["path_list"]
     file_name = url_pieces["file_name"]

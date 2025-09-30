@@ -167,6 +167,7 @@ a:active {
     margin-top: 5em;
 }
 
+
 #toc {
     border: 0px;
     width: calc(0.5 * calc(99% - min(80%, 800px)));
@@ -280,8 +281,22 @@ a:active {
         height: auto;
     }
 
+
+
 }
 
+/* classes to illustrate example markdown */
+.foo {
+    border-width: 3px;
+    border-style: double;
+    border-radius: 50%;
+    border-color: var(--complement);
+}
+
+.bar {
+    text-decoration: overline;
+    background-color: var(--complement);
+}
 
 
 @media (max-width:816px),

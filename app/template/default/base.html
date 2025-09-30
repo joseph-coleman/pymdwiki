@@ -15,9 +15,9 @@
 <body>
     {% include "_header.html" %}
 
-    {% block toc %}{% endblock %}
+    {% block toc %}{{ toc }}{% endblock toc %}
 
-    {% block content %}{% endblock %}
+    {% block content %}{{ content }}{% endblock content %}
 
     {% include "_footer.html" %}
 </body>
