@@ -132,7 +132,7 @@ def parse_url_path(path):
     path_split = path.split("/")
     path_split = [each for each in path_split if each]
 
-    if path_split[0] in RESERVED_PATHS:
+    if path_split and path_split[0] in RESERVED_PATHS:
         path_split.pop(0)
 
     if path_split:

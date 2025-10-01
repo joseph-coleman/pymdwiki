@@ -5,8 +5,8 @@
     "container_name": "uvicorn_app",
     "command": "uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
     "volumes": [
-      "d:/code/pymdwiki/app:/app/app",
-      "d:/code/pymdwiki/app/wiki:/mnt/data"
+      "./app:/app/app",
+      "./app/wiki:/mnt/data"
         ],
     "ports":
       ["8000:8000"],
