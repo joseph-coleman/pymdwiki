@@ -1,8 +1,8 @@
 {
 "services": {
-  "web": {
+  "pymdwikiserver": {
     "build": ".",
-    "container_name": "uvicorn_app",
+    "container_name": "pymdwiki",
     "command": "uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
     "volumes": [
       "./app:/app/app",
