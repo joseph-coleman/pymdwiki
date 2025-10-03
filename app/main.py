@@ -15,16 +15,15 @@ from pathlib import Path
 import os
 from pathlib import PurePosixPath
 
-FILE_PATH = os.getenv("DATA_DIR", "wiki")
-os.makedirs(FILE_PATH, exist_ok=True)
-
-RESERVED_PATHS = ["wiki", "edit", "save", "delete"]
-DEFAULT_WIKI_PAGE = "main"
-
-TEMPLATE = "default"
-
 import markdown
 
+from config import DEFAULT_WIKI_PAGE, TEMPLATE
+
+# these aren't configurable
+RESERVED_PATHS = ["wiki", "edit", "save", "delete"]
+FILE_PATH = "wiki"
+
+os.makedirs(FILE_PATH, exist_ok=True)
 
 from src.markdown_extensions import (
     LaTeXExtension,
