@@ -240,9 +240,7 @@ class UnifiedMathPreprocessor(Preprocessor):
             lambda m: self.md.htmlStash.store(f"\\[\n{m.group(1).strip()}\n\\]"), text
         )
 
-        if text == original_text:
-            self.md.pymdwiki_has_latex = False
-        else:
+        if text != original_text:
             self.md.pymdwiki_has_latex = True
 
         return text.split("\n")
@@ -250,4 +248,5 @@ class UnifiedMathPreprocessor(Preprocessor):
 
 class LaTeXExtension(Extension):
     def extendMarkdown(self, md):
+        md.pymdwiki_has_latex = False
         md.preprocessors.register(UnifiedMathPreprocessor(md), "unified-math", 25)
