@@ -6,7 +6,7 @@
     "command": "uvicorn main:app --host 0.0.0.0 --port 8000 --reload",
     "volumes": [
       "${APP_LOCATION}:/app/app",
-      "${DOCUMENTS_LOCATION}:/mnt/data"
+      "${DOCUMENTS_LOCATION}:/app/app/wiki"
         ],
     "ports":
       ["8000:8000"],

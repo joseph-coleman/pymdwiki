@@ -37,6 +37,9 @@ RUN mkdir -p /app/wiki
 # Place executables in the environment at the front of the path
 ENV PATH="/app/.venv/bin:$PATH"
 
+RUN echo "Using document location:"
+RUN echo "$DOCUMENTS_LOCATION"
+
 EXPOSE 8000
 WORKDIR /app/app
 ENTRYPOINT []
