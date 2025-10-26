@@ -3,6 +3,8 @@
     <h1>{{title}}</h1>
     <p> |
         <a href="/edit/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Edit</a> |
+        <a href="/wiki/{{default_wiki_page}}">{{default_wiki_page}}</a> |
+        <a href="/index/">Index</a> |
         <!--<a href="/delete/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Delete</a> | -->
     </p>
 </div>

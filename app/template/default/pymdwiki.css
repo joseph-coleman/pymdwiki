@@ -295,6 +295,15 @@ a:active {
         /* background-color: var(--link-dark) */
     }
 
+    & .list_file::marker {content: "📄"}
+    & .list_file.file_md::marker {content: "📝"}
+    & .list_file.file_txt::marker {content: "📄"}
+    & .file_png::marker, & .file_jpg::marker, & .file_jpeg::marker, & .file_gif::marker {content: "📷"}
+    & .list_file.file_canvas::marker {content: "🖼️"}
+    & .list_file.file_pdf::marker {content: "📜"}
+    & .list_dir_link::marker {content: "📂"}
+    & .list_dir::marker {content: "📂"}
+
 }
 
 /* classes to illustrate example markdown */

@@ -14,13 +14,19 @@ from urllib.parse import unquote
 from pathlib import Path
 import os
 from pathlib import PurePosixPath
+import glob
 
 import markdown
 
-from config import DEFAULT_WIKI_PAGE, TEMPLATE
+from config import (
+    DEFAULT_WIKI_PAGE,
+    TEMPLATE,
+    DIRECTORY_AS_MD_FILE_LINK,
+    HIDE_DOT_DIRECTORY,
+)
 
 # these aren't configurable
-RESERVED_PATHS = ["wiki", "edit", "save", "delete"]
+RESERVED_PATHS = ["wiki", "edit", "save", "delete", "index"]
 FILE_PATH = "wiki"
 
 os.makedirs(FILE_PATH, exist_ok=True)
@@ -271,6 +277,7 @@ async def view_document(request):
     doc_template = jinja_env.get_template("document.html")
 
     doc_data = {}
+    doc_data["default_wiki_page"] = DEFAULT_WIKI_PAGE
 
     # Extract the path from the request
     path = request.url.path
@@ -362,6 +369,7 @@ async def edit_document(request):
     doc_template = jinja_env.get_template("edit.html")
 
     doc_data = {}
+    doc_data["default_wiki_page"] = DEFAULT_WIKI_PAGE
 
     url_pieces = parse_url_path(request.url.path)
 
@@ -487,7 +495,231 @@ async def delete_document(request):
     return RedirectResponse(f"/edit/{path}/{file_name_base}")
 
 
+def find_last_match_index(A, B):
+    """Given two lists, find the index of last match"""
+    min_len = min(len(A), len(B))
+    if min_len == 0:
+        return -1  # or would raise error be better?
+    for n in range(min_len):
+        if A[n] != B[n]:
+            return n - 1
+    return min_len - 1
+
+
+def parse_file_path(path, remove_reserved=True):
+    """helper to break path into some commonly used components"""
+    path = unquote(path)
+    while ".." in path:
+        path = path.replace("..", "")
+    while "\\" in path:
+        path = path.replace("\\", "/")
+    while "//" in path:
+        path = path.replace("//", "/")
+    path_split = path.split("/")
+    path_split = [each for each in path_split if each]
+    is_md = False
+
+    if remove_reserved and path_split and path_split[0] in RESERVED_PATHS:
+        path_split.pop(0)
+
+    if path_split:
+        file_name = path_split.pop()
+        if len(path_split) == 0:
+            path_split = [""]
+        file_name_parts = file_name.split(".")
+        if len(file_name_parts) > 1:
+            file_ext = file_name_parts.pop()
+            file_name_no_ext = file_name[: -1 - len(file_ext)]
+        else:
+            file_ext = ""
+            file_name_no_ext = file_name
+
+        if file_ext == "md":
+            is_md = True
+            path_split.append(file_name_no_ext)
+
+        if not path_split[0]:
+            path_split.pop(0)
+    else:
+        path_split = [""]
+        file_name = DEFAULT_WIKI_PAGE
+        file_ext = ""
+        file_name_no_ext = DEFAULT_WIKI_PAGE
+
+    response = {
+        "path": "/".join(path_split),
+        "path_list": path_split,
+        "file_name": file_name,
+        "file_ext": file_ext,
+        "file_name_no_ext": file_name_no_ext,
+        "is_md": is_md,
+    }
+    return response
+
+
+# /index/
+async def index_document(request):
+
+    template_path = os.path.join("template", TEMPLATE)
+    jinja_env = Environment(loader=FileSystemLoader(template_path))
+    doc_template = jinja_env.get_template("document.html")
+
+    doc_data = {}
+    doc_data["default_wiki_page"] = DEFAULT_WIKI_PAGE
+
+    url_pieces = parse_url_path(request.url.path)
+
+    path = url_pieces["path"]
+    path_list = url_pieces["path_list"]
+    file_name = url_pieces["file_name"]
+    file_ext = url_pieces["file_ext"]
+    file_name_base = url_pieces["file_name_no_ext"]
+
+    file_path = ""
+
+    # file_path = os.path.join(".", FILE_PATH)
+    file_path = os.path.join(FILE_PATH)
+    # specify the file extension you want to search for
+    extension = "*.md"
+    # use the glob module to find all files with the specified extension in the directory and its subdirectories
+
+    file_list = []
+    for extension in ["*.md", "*.png", "*.jpg", "*.jpeg", "*.pdf", "*.canvas"]:
+
+        file_list = file_list + glob.glob(
+            f"{file_path}/**/{extension}",
+            recursive=True,
+            include_hidden=not HIDE_DOT_DIRECTORY,
+        )
+
+    md_list = ""
+    last_list_depth = 0
+    current_list_depth = 0
+
+    last_path_list = []
+    last_path = ""
+    file_list = [f if f[-3:] != ".md" else f[:-3] for f in file_list]
+    file_list = list(set(file_list))
+    file_list.sort(key=str.lower)
+
+    for each in file_list:
+        d = parse_file_path(each)
+
+        if not d["path"]:
+            current_list_depth = 0
+        else:
+            current_list_depth = len(d["path_list"])
+
+            # # ignore any hidden folders, anything that begins with .
+            # if any(
+            #     [
+            #         True if directory_name[0] == "." else False
+            #         for directory_name in d["path_list"]
+            #     ]
+            # ):
+            #     if HIDE_DOT_DIRECTORY:
+            #         continue
+
+        if not (last_path_list == d["path_list"]):
+            # path has changed.
+            branch_index = find_last_match_index(last_path_list, d["path_list"])
+            if branch_index == -1:
+                # branch_index = 0  # just starting
+                ...
+
+            # up_depth = last_list_depth - branch_index
+            down_depth = current_list_depth - branch_index
+
+            if branch_index == -1:
+                # correction
+                down_depth = down_depth - 1
+
+            for depth in range(branch_index + 1, current_list_depth):
+
+                if depth == (current_list_depth - 1):
+                    if d["is_md"]:
+                        md_list += (
+                            f"{depth * '    '}* [["
+                            + "/".join(d["path_list"])
+                            + "]]\n"
+                            + f"{{: .list_file .file_{d['file_ext']} }}\n"
+                        )
+                        break
+
+                if DIRECTORY_AS_MD_FILE_LINK:
+                    md_list += (
+                        f"{depth * '    '}* [["
+                        + "/".join(d["path_list"][: depth + 1])
+                        + f"]] \n"
+                        + "{: .list_dir_link }\n"
+                    )
+                else:
+                    md_list += (
+                        f"{depth * '    '}* "
+                        + d["path_list"][depth]
+                        + "\n"
+                        + "{: .list_dir }\n"
+                    )
+        else:
+            ...
+
+        if not d["is_md"]:
+            md_list += (
+                f"{current_list_depth * '    '}* [["
+                + "/".join([*d["path_list"], d["file_name"]])
+                + "]]\n"
+                + f"{{: .list_file .file_{d['file_ext']} }}\n"
+            )
+        # else:
+        #     md_list += (
+        #         f"{current_list_depth * '    '}* <<[["
+        #         + "/".join(d["path_list"])
+        #         + "]]>>\n"
+        #         # + f"{{: .list_file .file_{d['file_ext']} }}\n"
+        #     )
+
+        # md_list += (
+        #     f"{current_list_depth * '    '}* <<[["
+        #     + "/".join(d["path_list"])
+        #     + "/"
+        #     + d["file_name_no_ext"]
+        #     + "]]>>\n"
+        #     # + f"{{: .list_file .file_{d['file_ext']} }}\n"
+        # )
+
+        # current becomes last on next iteration.
+        last_list_depth = current_list_depth
+        last_path_list = d["path_list"].copy()
+        last_path = d["path"]
+
+    # custom extensions need to be configured on creation,
+    # and this one needs the current path
+    all_extensions = MD_EXTENSIONS + [
+        WikiLinkExtension(
+            base_url="/wiki",
+            current_path=path,
+            page_exists_callback=wikilink_page_check,
+        )
+    ]
+    md = markdown.Markdown(
+        extensions=all_extensions,
+        extension_configs=MD_EXTENSION_CONFIG,
+        output_format="html",
+    )
+    html = md.convert(md_list)
+
+    doc_data["scripts"] = ""
+    doc_data["unlinked_title"] = "Index"
+    # doc_data["document"] = "<pre>" + md_list + "</pre><pre>" + debug_text + "</pre>"
+    doc_data["document"] = html
+
+    response_content = doc_template.render(doc_data)
+
+    return HTMLResponse(response_content)
+
+
 routes = [
+    Route("/index/{path:path}", endpoint=index_document, methods=["GET", "POST"]),
     Route("/delete/{path:path}", endpoint=delete_document, methods=["GET", "POST"]),
     Route("/save/{path:path}", endpoint=save_document, methods=["GET", "POST"]),
     Route("/edit/{path:path}", endpoint=edit_document, methods=["GET", "POST"]),

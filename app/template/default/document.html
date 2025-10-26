@@ -7,7 +7,12 @@
 {% block content %}
 <div id="document">
 
+    {% if title %}
     <p id="pagetitle"><a href="/edit/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">{{title}}</a></p>
+    {% endif %}
+    {% if unlinked_title %}
+    <p id="pagetitle">{{unlinked_title}}</p>
+    {% endif %}
 
     {{ document }}
 
