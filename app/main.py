@@ -146,8 +146,18 @@ def parse_url_path(path):
             path_split = [""]
         file_name_parts = file_name.split(".")
         if len(file_name_parts) > 1:
-            file_ext = file_name_parts.pop()
-            file_name_no_ext = file_name[: -1 - len(file_ext)]
+            if file_name_parts[0]:
+                file_ext = file_name_parts.pop()
+                file_name_no_ext = file_name[: -1 - len(file_ext)]
+            else:
+                # could be .hidden.md  ['', 'hidden', 'md']
+                # or .hidden  ['', 'hidden']
+                if len(file_name_parts) == 2:
+                    file_ext = ""
+                    file_name_no_ext = file_name
+                else:
+                    file_ext = file_name_parts.pop()
+                    file_name_no_ext = ".".join(file_name_parts)
         else:
             file_ext = ""
             file_name_no_ext = file_name
@@ -202,14 +212,14 @@ def wikilink_page_check(resolved_name):
 
     # resolved_path = path.resolve()
     url_pieces = parse_url_path(resolved_path)
-    file_exists = markdown_file_exists(url_pieces)
+    file_exists = markdown_file_exists(url_pieces, any_type=True)
 
     if not file_exists:
         return False
     return True
 
 
-def markdown_file_exists(url_pieces):
+def markdown_file_exists(url_pieces, any_type=False):
     """Determines if a markdown url exists as a file"""
 
     path = url_pieces["path"]
@@ -223,6 +233,10 @@ def markdown_file_exists(url_pieces):
     if file_ext == "":
         file_path = os.path.join(FILE_PATH, *path_list, file_name) + ".md"
     elif file_ext == "md":
+        file_path = os.path.join(FILE_PATH, *path_list, file_name)
+    elif any_type:
+        # check other extensions?
+        # should we explicitly check from a subset of supported filename extensions?
         file_path = os.path.join(FILE_PATH, *path_list, file_name)
 
     if len(file_path) > 0 and Path(file_path).exists():
@@ -292,7 +306,7 @@ async def view_document(request):
     file_ext = url_pieces["file_ext"]
     file_name_base = url_pieces["file_name_no_ext"]
 
-    file_path = markdown_file_exists(url_pieces)
+    file_path = markdown_file_exists(url_pieces, any_type=False)
 
     if file_path:
 
@@ -447,6 +461,9 @@ async def save_document(request):
     if "delete_button" in form:
         ...
         delete_document = True
+
+    if not document_name:
+        return RedirectResponse(f"/wiki/{DEFAULT_WIKI_PAGE}")
 
     url_pieces = parse_url_path(document_name)
     path = url_pieces["path"]

@@ -21,4 +21,4 @@ DIRECTORY_AS_MD_FILE_LINK = True
 # then ignore all of it's contents on the /index/ page
 # Currently still accessable from /wiki/
 #
-HIDE_DOT_DIRECTORY = False
+HIDE_DOT_DIRECTORY = True
