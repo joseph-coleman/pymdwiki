@@ -40,8 +40,12 @@ ENV PATH="/app/.venv/bin:$PATH"
 RUN echo "Using document location:"
 RUN echo "$DOCUMENTS_LOCATION"
 
-EXPOSE 8000
+# specify a default of 8000
+ENV PORT=8000
+
+EXPOSE ${PORT}
 WORKDIR /app/app
 ENTRYPOINT []
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+#CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT} --reload"]
