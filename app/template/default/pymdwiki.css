@@ -89,7 +89,8 @@ blockquote,*/
     }
 
     & p {
-        margin-bottom: 1em;
+        margin-bottom: 0.5em;
+        margin-top: 0.5em;
     }
 
     /* Save submit button */
@@ -326,14 +327,12 @@ a:active {
 
     #document {
         font-size: 150%;
-        background-color: rgb(27, 164, 111);
         padding: 0;
         margin: auto;
         width: 99%;
     }
 
     #toc {
-        border: 1px solid red;
         width: 99%;
         float: none;
         display: none;
@@ -347,14 +346,12 @@ a:active {
 
     #document {
         font-size: 200%;
-        background-color: rgb(148, 205, 198);
         padding: 0;
         margin: auto;
         width: 99%;
     }
 
     #toc {
-        border: 1px solid blue;
         width: 99%;
         float: none;
         display: none;
