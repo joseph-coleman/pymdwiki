@@ -132,6 +132,8 @@ def parse_url_path(path):
     path = unquote(path)
     while ".." in path:
         path = path.replace("..", "")
+    while "\\" in path:
+        path = path.replace("\\", "/")
     while "//" in path:
         path = path.replace("//", "/")
     path_split = path.split("/")
@@ -327,7 +329,7 @@ async def view_document(request):
             extension_configs=MD_EXTENSION_CONFIG,
             output_format="html",
         )
-        with open(file_path, "r") as file:
+        with open(file_path, "r", newline="") as file:
             html = file.read()
         html = md.convert(html)
 
@@ -408,7 +410,7 @@ async def edit_document(request):
         page_name = file_name
 
     if len(file_path) > 0 and Path(file_path).exists():
-        with open(file_path, "r") as file:
+        with open(file_path, "r", newline="") as file:
             raw_markdown = file.read()
         page_title = f"Editing {file_name}"
         doc_data["document_mode"] = "edit"
@@ -487,11 +489,11 @@ async def save_document(request):
 
         os.makedirs(os.path.join(FILE_PATH, *path_list), exist_ok=True)
 
-        with open(file_path, "w") as file:
+        with open(file_path, "w", newline="\n") as file:
             file.write(updated_markdown)
         # do we want to catch case when we write an empty file?
 
-    return RedirectResponse(f"/wiki/{path}/{file_name_base}")
+    return RedirectResponse("/".join(["/wiki", file_name_base]))
 
 
 # /delete/
@@ -509,7 +511,7 @@ async def delete_document(request):
     file_ext = url_pieces["file_ext"]
     file_name_base = url_pieces["file_name_no_ext"]
 
-    return RedirectResponse(f"/edit/{path}/{file_name_base}")
+    return RedirectResponse("/".join(["/edit", file_name_base]))
 
 
 def find_last_match_index(A, B):
