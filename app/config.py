@@ -22,3 +22,8 @@ DIRECTORY_AS_MD_FILE_LINK = True
 # Currently still accessable from /wiki/
 #
 HIDE_DOT_DIRECTORY = True
+
+#
+# Specify file enocding for markdown files.
+#
+DEFAULT_ENCODING = "utf-8"

@@ -23,6 +23,7 @@ from config import (
     TEMPLATE,
     DIRECTORY_AS_MD_FILE_LINK,
     HIDE_DOT_DIRECTORY,
+    DEFAULT_ENCODING,
 )
 
 # these aren't configurable
@@ -35,6 +36,7 @@ from src.markdown_extensions import (
     LaTeXExtension,
     StrikeThroughExtension,
     HighLightExtension,
+    AutoLinkExtension,
     ImageEmbedExtension,
     WikiLinkExtension,
 )
@@ -54,6 +56,7 @@ MD_EXTENSIONS = [
     "smarty",
     "toc",
     ImageEmbedExtension(),
+    AutoLinkExtension(),
     # WikiLinkExtension(), specified below with parameters
     #
 ]
@@ -329,7 +332,7 @@ async def view_document(request):
             extension_configs=MD_EXTENSION_CONFIG,
             output_format="html",
         )
-        with open(file_path, "r", newline="") as file:
+        with open(file_path, "r", newline="", encoding=DEFAULT_ENCODING) as file:
             html = file.read()
         html = md.convert(html)
 
@@ -410,7 +413,7 @@ async def edit_document(request):
         page_name = file_name
 
     if len(file_path) > 0 and Path(file_path).exists():
-        with open(file_path, "r", newline="") as file:
+        with open(file_path, "r", newline="", encoding=DEFAULT_ENCODING) as file:
             raw_markdown = file.read()
         page_title = f"Editing {file_name}"
         doc_data["document_mode"] = "edit"
@@ -461,8 +464,7 @@ async def save_document(request):
     updated_markdown = form["markdown"]
     document_name = form["document_name"]
     if "delete_button" in form:
-        ...
-        delete_document = True
+        return await delete_document(request)
 
     if not document_name:
         return RedirectResponse(f"/wiki/{DEFAULT_WIKI_PAGE}")
@@ -489,29 +491,54 @@ async def save_document(request):
 
         os.makedirs(os.path.join(FILE_PATH, *path_list), exist_ok=True)
 
-        with open(file_path, "w", newline="\n") as file:
+        with open(
+            file_path,
+            "w",
+            newline="\n",
+            encoding=DEFAULT_ENCODING,
+            errors="xmlcharrefreplace",
+        ) as file:
             file.write(updated_markdown)
         # do we want to catch case when we write an empty file?
 
-    return RedirectResponse("/".join(["/wiki", file_name_base]))
+    return RedirectResponse("/".join(["/wiki", *path_list, file_name_base]))
 
 
 # /delete/
 async def delete_document(request):
-    ## TODO: See comments in /save/
-    ## probably makes sense to have dedicated endpoint for deletion
-    ## Not implemented yet.
+    """Deletes a file.  Does not delete directories."""
+    method = request.method
 
-    print("DELETE DOCUMENT")
+    if method == "POST":
 
-    url_pieces = parse_url_path(request.url.path)
-    path = url_pieces["path"]
-    path_list = url_pieces["path_list"]
-    file_name = url_pieces["file_name"]
-    file_ext = url_pieces["file_ext"]
-    file_name_base = url_pieces["file_name_no_ext"]
+        form = await request.form()
+        document_name = form["document_name"]
 
-    return RedirectResponse("/".join(["/edit", file_name_base]))
+        if not document_name:
+            return RedirectResponse(f"/wiki/{DEFAULT_WIKI_PAGE}")
+
+        url_pieces = parse_url_path(document_name)
+        path = url_pieces["path"]
+        path_list = url_pieces["path_list"]
+        file_name = url_pieces["file_name"]
+        file_ext = url_pieces["file_ext"]
+        file_name_base = url_pieces["file_name_no_ext"]
+
+        file_path = ""
+        if file_ext == "":
+            file_name = file_name + ".md"
+            file_ext = "md"
+
+        file_path = os.path.join(FILE_PATH, *path_list, file_name)
+
+        if len(file_path) > 0:
+            if Path(file_path).exists():
+                os.remove(file_path)
+    elif method == "GET":
+        ...
+
+    return RedirectResponse("/index/")
+    # return RedirectResponse("/".join(["/edit", *path_list, file_name_base]))
 
 
 def find_last_match_index(A, B):

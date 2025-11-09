@@ -14,11 +14,14 @@
     </p>
 
     <form action="/save/" method="post" name="edit_document_form">
-        <textarea name="markdown" style="width:100%;" rows=50>{{document}}</textarea>
+        <textarea name="markdown" style="width:100%;" rows=33>{{document}}</textarea>
         <br />
         <input type="submit" value="Save" />
         <input type="hidden" name="document_name" value="{{file_path}}">
+        <button name="preview_button" value="true">Preview</button>
+        {% if document_mode == "edit" %}
         <button name="delete_button" value="true">Delete</button>
+        {% endif %}
     </form>
 
 </div>

@@ -59,11 +59,18 @@ class WikiLinkInlineProcessor(InlineProcessor):
     def handleMatch(self, m, data):
         raw_text = m.group(1).strip()
 
+        print("=============")
+        print(f"{raw_text=}")
+
         # Pipe syntax [[Page|Text]]
         if "|" in raw_text:
             page_part, link_text = [p.strip() for p in raw_text.split("|", 1)]
         else:
             page_part, link_text = raw_text, None
+
+        # for the examples on scratch, the link text is all None because I'm not
+        # using the | pipe syntax.
+        print(f"{page_part=}, {link_text=}")
 
         # remove anchor if present
         if "#" in page_part:
@@ -175,6 +182,22 @@ class HighLightExtension(Extension):
         md.inlinePatterns.register(
             HighLightInlineProcessor(MD_RE, md), "highlightinline", 175
         )
+
+
+class AutoLinkInlineProcessor(InlineProcessor):
+    def handleMatch(self, m, data):
+        url = m.group(1)
+        el = etree.Element("a")
+        el.set("href", url)
+        el.text = url
+        el.set("target", "_blank")  # open in a rnew tab
+        return el, m.start(0), m.end(0)
+
+
+class AutoLinkExtension(Extension):
+    def extendMarkdown(self, md):
+        URL_RE = r"(https?://[^\s<]+)"
+        md.inlinePatterns.register(AutoLinkInlineProcessor(URL_RE, md), "autolink", 200)
 
 
 class UnifiedMathPreprocessor(Preprocessor):
