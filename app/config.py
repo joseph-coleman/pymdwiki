@@ -27,3 +27,8 @@ HIDE_DOT_DIRECTORY = True
 # Specify file enocding for markdown files.
 #
 DEFAULT_ENCODING = "utf-8"
+
+#
+# Number of document revisions to keep
+#
+PAGE_REVISION_HISTORY_COUNT = 30

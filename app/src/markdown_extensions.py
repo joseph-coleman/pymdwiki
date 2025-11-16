@@ -37,15 +37,20 @@ class WikiLinkInlineProcessor(InlineProcessor):
 
     def resolve_page_name(self, page_name: str) -> str:
         """Resolve page names with relative/absolute rules."""
-        page_name = page_name.strip()
+        resolved = page_name.strip()
 
-        if page_name.startswith("/"):
-            # Absolute path (from wiki root)
-            resolved = page_name.lstrip("/")
+        resolved = resolved.rstrip("/")
+
+        print(f"{self.current_path=}")
+
+        if resolved.startswith("/"):
+            resolved = resolved.lstrip("/")
+            print("@@@@ path A", resolved)
         elif self.current_path:
-            resolved = "/".join([self.current_path, page_name])
-        else:
-            resolved = page_name
+            resolved = "/".join([self.current_path, resolved])
+            print("$$$$ path B", resolved)
+        # else:
+        #     resolved = resolved
         return resolved
 
     def default_link_text(self, page_name: str, resolved_name: str) -> str:
@@ -61,6 +66,36 @@ class WikiLinkInlineProcessor(InlineProcessor):
 
         print("=============")
         print(f"{raw_text=}")
+
+        # """
+        # Ok, what do we want to do here.
+        # a wikilink might contain a # anchor, so we filter that stuff out
+        # [[/my page/doc#hello world]]
+        # And also some display text using pipe notation [[/my_page|Hello World]]
+        # Also, filter that out.  The page name is the important part for creating
+        # something to link to.
+
+        # We don't really place any restrictions on file names that can be created.
+        # So far.  So why place restrictions on wiki links?
+
+        # Of course, it would be nice to have sanitized file structure,
+        # but other than ., .., and / or \, we should be fine.  In the
+        # case of an illegal character being used, we should simply fail instead
+        # of trying to catch it.
+
+        # Two main types of page links to conisder, absolute and relative
+        # Absolute starts with a /, relative does not.
+
+        # A wiki page that ends with a slash / doesn't have a document name,
+        # and we don't really create one
+
+        # URL encodings could be a problem.  On disk, I can create the following
+        # `hello world.md`, `hello+world.md` and `hello%20world.md`, and they're
+        # all unique, but they're all the "same" in terms of a URL.  Obsidian has
+        # no problems with these files, but a web interface necessarily makes some
+        # of these unreachable.  This requires an opinion!
+
+        # """
 
         # Pipe syntax [[Page|Text]]
         if "|" in raw_text:
@@ -82,6 +117,11 @@ class WikiLinkInlineProcessor(InlineProcessor):
 
         resolved_name = self.resolve_page_name(page_name)
         normalized_name = normalize_page_name(resolved_name)
+
+        print(f"{page_part=}")
+        print(f"{resolved_name=}")
+        print(f"{normalized_name=}")
+        print(f"{self.base_url=}")
 
         url = f"{self.base_url}/{normalized_name}"
         if anchor:
