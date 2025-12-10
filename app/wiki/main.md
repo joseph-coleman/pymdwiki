@@ -1,4 +1,3 @@
-# Main
+# Main Page
 
-This is the start page. Hello world.
-
+This is the start page.

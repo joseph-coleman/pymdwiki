@@ -10,6 +10,33 @@ import re
 # from ..main import parse_url_path, markdown_file_exists
 
 
+# class JupyterCellPreprocessor(Preprocessor):
+#     pattern = re.compile(r"!!!jupyter(.*?)!!!", re.DOTALL)
+
+#     def run(self, lines):
+#         text = "\n".join(lines)
+
+#         def repl(match):
+#             code = match.group(1).strip()
+#             cell_id = id(code)  # or hash
+#             return f"""
+# <div class="jupyter-cell" data-cell-id="{cell_id}">
+#   <textarea class="jupyter-code">{code}</textarea>
+#   <button class="jupyter-run">Run</button>
+#   <pre class="jupyter-output"></pre>
+# </div>
+# """
+
+#         new_text = self.pattern.sub(repl, text)
+#         return new_text.split("\n")
+
+
+# class JupyterCellExtension(Extension):
+#     def extendMarkdown(self, md):
+#         md.registerExtension(self)
+#         md.preprocessors.register(JupyterCellPreprocessor(md), "jupyter_cell", 25)
+
+
 def normalize_page_name(page_name: str) -> str:
     """Convert spaces to underscores, but preserve slashes for subdirectories."""
     parts = page_name.split("/")
@@ -305,6 +332,8 @@ class UnifiedMathPreprocessor(Preprocessor):
 
         if text != original_text:
             self.md.pymdwiki_has_latex = True
+        print(original_text)
+        print(text)
 
         return text.split("\n")
 
@@ -312,4 +341,4 @@ class UnifiedMathPreprocessor(Preprocessor):
 class LaTeXExtension(Extension):
     def extendMarkdown(self, md):
         md.pymdwiki_has_latex = False
-        md.preprocessors.register(UnifiedMathPreprocessor(md), "unified-math", 25)
+        md.preprocessors.register(UnifiedMathPreprocessor(md), "unified-math", 26)
