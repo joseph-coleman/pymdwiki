@@ -1,10 +1,17 @@
 <div id="document_header">
     <img src="/favicon.ico" width="128" height="128" align="right" />
+    {% if title %}
     <h1>{{title}}</h1>
+    {% elif unlinked_title %}
+    <h1>{{unlinked_title}}</h1>
+    {% endif %}
     <p> |
         <a href="/edit/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Edit</a> |
         <a href="/wiki/{{default_wiki_page}}">{{default_wiki_page}}</a> |
         <a href="/index/">Index</a> |
         <!--<a href="/delete/{% if page_path %}{{page_path}}/{% endif %}{{page_name}}">Delete</a> | -->
+        {% if is_jupyter %}
+        <a href="/manage/jupyter">Kernels</a> |
+        {% endif %}
     </p>
 </div>

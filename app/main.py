@@ -1,13 +1,25 @@
 from starlette.applications import Starlette
-from starlette.responses import HTMLResponse, RedirectResponse, FileResponse
+from starlette.responses import (
+    HTMLResponse,
+    RedirectResponse,
+    FileResponse,
+    JSONResponse,
+)
 from starlette.exceptions import HTTPException
 from starlette.routing import Route
+
+from starlette.requests import Request
+
+from starlette.websockets import WebSocket
+from starlette.routing import WebSocketRoute
 
 from html import escape
 import datetime
 
 # from jinja2 import Template
 from jinja2 import Environment, FileSystemLoader
+
+import httpx
 
 import json
 from urllib.parse import unquote
@@ -41,6 +53,9 @@ from src.markdown_extensions import (
     WikiLinkExtension,
 )
 
+from src.jupyter_extension import JupyterCellExtension
+
+
 MD_EXTENSIONS = [
     LaTeXExtension(),
     StrikeThroughExtension(),
@@ -59,6 +74,7 @@ MD_EXTENSIONS = [
     AutoLinkExtension(),
     # WikiLinkExtension(), specified below with parameters
     #
+    JupyterCellExtension(),
 ]
 # these configs are only for builtin extensions,
 # config passing for custom extensions needs to occur when instatiating
@@ -277,12 +293,16 @@ async def catch_all(request):
     # So, really f"/template/{TEMPLATE}/page_header.jpg" would be served
     if path_list[0] == "template":
         path_list.pop(0)
-        path_list.pop(0)
+        if path_list:
+            path_list.pop(0)
         template_path = os.path.join("template", TEMPLATE)
         if file_ext in ["css", "js", "png", "jpg", "jpeg", "gif"]:
             file_path = os.path.join(os.getcwd(), template_path, *path_list, file_name)
+            print(file_path)
             if Path(file_path).exists():
                 return FileResponse(file_path, filename=file_name)
+            else:
+                print("file doesn't exist")
 
     # should config a default start page
     return RedirectResponse(f"/wiki/{DEFAULT_WIKI_PAGE}")
@@ -339,14 +359,16 @@ async def view_document(request):
         doc_data["title"] = file_name_base
         doc_data["page_name"] = page_name
         doc_data["page_path"] = path
-        doc_data["toc"] = md.toc
+        doc_data["toc"] = md.toc  # pylint: disable=no-member
+        doc_data["scripts"] = ""
 
         # this here allows for including it only on the document page.
         # and only if LaTeX was in the markdown and got processed.
-        if md.pymdwiki_has_latex:
+
+        if md.pymdwiki_has_latex:  # pylint: disable=no-member
             doc_data[
                 "scripts"
-            ] = """
+            ] += """
                     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" integrity="sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP" crossorigin="anonymous">
                     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" integrity="sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6" crossorigin="anonymous"></script>
                     <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js" integrity="sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh" crossorigin="anonymous"></script>
@@ -361,6 +383,10 @@ async def view_document(request):
                             });
                         });
                     </script>"""
+
+        if md.pymdwiki_has_jupyter:  # pylint: disable=no-member
+            doc_data["is_jupyter"] = True
+            doc_data["scripts"] += """<script src="/template/jupyter.js"></script>"""
 
         doc_data["document"] = html
 
@@ -696,7 +722,7 @@ async def index_document(request):
                     md_list += (
                         f"{depth * '    '}* [["
                         + "/".join(d["path_list"][: depth + 1])
-                        + f"]] \n"
+                        + "]] \n"
                         + "{: .list_dir_link }\n"
                     )
                 else:
@@ -764,7 +790,117 @@ async def index_document(request):
     return HTMLResponse(response_content)
 
 
+from src.jupyter_client import jupyter_manager
+from src.tasks import kernel_reaper_loop
+
+import asyncio
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
+async def lifespan(app):
+    # --- Startup ---
+    print("Starting Kernel Reaper...")
+    # Create the background task
+    reaper_task = asyncio.create_task(kernel_reaper_loop())
+
+    yield
+
+    # --- Shutdown ---
+    print("Stopping Kernel Reaper...")
+    reaper_task.cancel()
+    try:
+        await reaper_task
+    except asyncio.CancelledError:
+        pass
+
+
+async def jupyter_websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+
+    try:
+        # 1. Wait for the frontend to send the configuration
+        data = await websocket.receive_json()
+        page_id = data.get("page_id")
+        code = data.get("code")
+
+        if not page_id or not code:
+            await websocket.send_text("Error: Missing page_id or code")
+            await websocket.close()
+            return
+
+        # 2. Get/Create Kernel
+        # Note: Add error handling here if Jupyter is down
+        kernel_id = await jupyter_manager.get_or_create_kernel(page_id)
+
+        # 3. Stream the output
+        async for output_chunk in jupyter_manager.execute_code_stream(kernel_id, code):
+            # Send chunk to browser immediately
+            await websocket.send_text(output_chunk)
+
+    except Exception as e:
+        print("web socket exception")
+        await websocket.send_text(f"\nSystem Error: {str(e)}")
+
+    finally:
+        await websocket.close()
+
+
+async def manage_jupyter(request):
+    # /manage/jupyter
+    k_list = jupyter_manager.list_kernels()
+    k_list_response = await k_list
+
+    qp = request.query_params
+    if kernel_to_delete := qp.get("delete"):
+        await jupyter_manager.delete_kernel_by_id(kernel_to_delete)
+        return RedirectResponse(f"/manage/jupyter")
+
+    raw_markdown = ""
+    if isinstance(k_list_response, list) and len(k_list_response) > 0:
+        raw_markdown = """Action    | Name  | State | Idle | Connections | Pages\n----- | ----- | ----- | ----- | ----- | -----\n"""
+        for each_k in k_list_response:
+            raw_markdown += f"""[❌](/manage/jupyter?delete={each_k['id']} ) | {each_k['name']} | {each_k['execution_state']} | {each_k['idle']} | {str(each_k['connections'])} | {str(each_k['pages'])} | \n"""
+    else:
+        raw_markdown = "No kernels."
+
+    ###################################################
+    template_path = os.path.join("template", TEMPLATE)
+    jinja_env = Environment(loader=FileSystemLoader(template_path))
+    doc_template = jinja_env.get_template("document.html")
+    doc_data = {}
+    doc_data["is_jupyter"] = True
+    doc_data["unlinked_title"] = "Kernel Management"
+    md = markdown.Markdown(
+        extensions=MD_EXTENSIONS,
+        extension_configs=MD_EXTENSION_CONFIG,
+        output_format="html",
+    )
+    html = md.convert(raw_markdown)
+    doc_data["document"] = html
+    response_content = doc_template.render(doc_data)
+    return HTMLResponse(response_content)
+
+
+async def markdown_convert_code(request):
+    # This takes as input some python code and
+    # converts it to snippet of markdown
+    form = await request.form()
+    code_snippet = form["code"]
+    raw_markdown = f"```python\n{code_snippet}\n```\n"
+    md = markdown.Markdown(
+        extensions=MD_EXTENSIONS,
+        extension_configs=MD_EXTENSION_CONFIG,
+        output_format="html",
+    )
+    html = md.convert(raw_markdown)
+    return HTMLResponse(html)
+
+
 routes = [
+    WebSocketRoute("/ws/run_jupyter", jupyter_websocket_endpoint),
+    Route("/manage/{path:path}", endpoint=manage_jupyter, methods=["GET", "POST"]),
+    Route("/api/markdown/code/", endpoint=markdown_convert_code, methods=["POST"]),
     Route("/index/{path:path}", endpoint=index_document, methods=["GET", "POST"]),
     Route("/delete/{path:path}", endpoint=delete_document, methods=["GET", "POST"]),
     Route("/save/{path:path}", endpoint=save_document, methods=["GET", "POST"]),
@@ -773,4 +909,9 @@ routes = [
     Route("/{path:path}", endpoint=catch_all, methods=["GET", "POST"]),
 ]
 
-app = Starlette(debug=True, routes=routes)
+app = Starlette(debug=True, routes=routes, lifespan=lifespan)
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await jupyter_manager.prune_stale_kernels(-1)

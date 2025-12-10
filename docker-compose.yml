@@ -2,19 +2,40 @@
 "services": {
   "pymdwikiserver": {
     "build": ".",
-    "container_name": "pymdwiki",
+    #"container_name": "pymdwiki${BUILD:}",
     "command": "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --reload",
     "volumes": [
       "${APP_LOCATION}:/app/app",
       "${DOCUMENTS_LOCATION}:/app/app/wiki"
         ],
+    "networks": ["pymdwiki-net"],
     "ports":
       ["${PORT:-8000}:${PORT:-8000}"],
     "environment":
       ["PYTHONUNBUFFERED=1",
       "PORT=${PORT:-8000}"
       ],
+    "restart": "always",
+    "depends_on": ["jupyterserver"]
+  },
+
+  "jupyterserver": {
+    #"image": "jupyter/minimal-notebook",
+    "image" : "jupyter/base-notebook:latest",
+    "hostname": "jupyter",
+    "networks": ["pymdwiki-net"],
+    #"ports": ["8888:8888"],
+    "command": "jupyter-server  --no-browser --ServerApp.token='' --ServerApp.password='' --ServerApp.allow_origin='*' --ServerApp.allow_credentials=true --ServerApp.ip='0.0.0.0' --ServerApp.disable_check_xsrf=True",
+    #"environment":  ["PORT=${PORT:-8888}"],
     "restart": "always"
   }
+},
+
+# Define the custom network 
+"networks": {
+  "pymdwiki-net" : {
+      "driver" : "bridge"
+    }
 }
+
 }

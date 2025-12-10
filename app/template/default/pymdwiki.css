@@ -27,11 +27,17 @@
 }
 
 @media (prefers-color-scheme: dark) {
+    /* we maintain the same name gradient as in the light color scheme,
+       darkest, darker, base-color, lighter, lightest,
+       but the colors are inverted.  So darkest is actually the
+       lightest color, and lightest is the darkeset. 
+       This means we don't have to change any css code. 
+       */
     :root {
-        --darkest: hsl(from var(--base-color) h calc(s * 1.4) calc(l * 1.6));
-        --darker: hsl(from var(--base-color) h calc(s * 1.2) calc(l * 1.3));
-        --lighter: hsl(from var(--base-color) h calc(s * 0.8) calc(l * 0.7));
-        --lightest: hsl(from var(--base-color) h calc(s * 0.6) calc(l * 0.5));
+        --darkest: hsl(from var(--base-color) h calc(s * 1.0) calc(l * 1.0));
+        --darker: hsl(from var(--base-color) h calc(s * 0.9) calc(l * 0.7));
+        --lighter: hsl(from var(--base-color) h calc(s * 0.8) calc(l * 0.5));
+        --lightest: hsl(from var(--base-color) h calc(s * 0.6) calc(l * 0.3));
         --link-dark: hsl(from var(--link-color) h calc(s * 1.2) calc(l * 1.3));
         --link-highlight: hsl(from var(--link-color) h calc(s * 0.8) calc(l * 0.7));
         --link-visited: hsl(from var(--link-color) calc(h + 120) calc(s * 0.8) calc(l * 0.7));
@@ -96,16 +102,22 @@ blockquote,*/
     /* Save submit button */
     & input[type="submit"],
     & button {
-        background-color: var(--base-color);
         color: var(--foreground);
         padding: 0.5em 2em;
-        border: 2px solid var(--darker);
-        border-style: solid;
         border-radius: 4px;
         cursor: pointer;
         font-size: 16px;
     }
 
+    /*& .jupyter-cell [aria-pressed="false"], */
+    & input[type="submit"],
+    & button {
+        background-color: var(--base-color);
+        border: 2px solid var(--darker);
+        border-style: solid;
+    }
+
+    & .jupyter-cell [aria-pressed="false"], 
     & input[type="submit"]:hover,
     & button:hover {
         background-color: var(--lighter);
@@ -113,11 +125,22 @@ blockquote,*/
         border-style: outset;
     }
 
+    & .jupyter-cell [aria-pressed="true"], 
     & input[type="submit"]:active,
     & button:active {
         background-color: var(--darker);
         border: 2px solid var(--darker);
         border-style: inset;
+    }
+
+
+    & input[type="submit"]:disabled,
+    & button:disabled {
+    background-color: #cccccc; /* Disabled button color */
+        background-color: var(--lightest);
+        border: 2px solid var(--base-color);
+        cursor: not-allowed; 
+        opacity: 0.6; 
     }
 
     & a {
@@ -284,6 +307,7 @@ a:active {
     & textarea {
         width: 100%;
         height: auto;
+        font-size:13pt;
     }
 
     & a.missing {
@@ -305,6 +329,59 @@ a:active {
     & .list_dir_link::marker {content: "📂"}
     & .list_dir::marker {content: "📂"}
 
+
+    & .jupyter-cell {
+        display: flex;
+        flex-direction: column;
+        /* flex-direction: column-reverse; */
+    }
+    & .jupyter-cell .jupyter-button-wrapper {
+        order: 0;
+    }
+    & .jupyter-cell .jupyter-output {
+        order: 1;
+    }
+    & .jupyter-cell .jupyter-code {
+        order: 2;
+    }
+    & .jupyter-cell .jupyter-formatted {
+        order: 3;
+    }
+
+
+    & .jupyter-cell pre {
+        line-height: 100%;
+    }
+    & .jupyter-cell .jupyter-button-wrapper {
+        text-align: right;
+    }
+    & .jupyter-cell button {
+        padding: 0.1em 0.1em;
+        border: 2px solid var(--darker);
+        font-size: 16px;
+        opacity: 0.05;
+        transition-property: opacity;
+        transition: 1s;
+        transition-timing-function: ease;
+        transition-delay: 15s;
+        pointer-events: none;
+    }
+    & .jupyter-cell:hover button {
+        opacity: 1.0;
+        transition-property: opacity;
+        transition: 0.0s;
+        transition-timing-function: ease-out;
+        pointer-events: auto;
+    }
+
+    & .jupyter-cell .jupyter-output {
+        border: 1px solid var(--lightest);
+        display: none;
+    }
+    & .jupyter-cell .jupyter-code {
+        display: none;
+    }
+    
 }
 
 /* classes to illustrate example markdown */
@@ -358,6 +435,23 @@ a:active {
     }
 
 }
+
+
+@media (prefers-color-scheme: light) {
+    div.linenodiv {
+        border-right:1px solid;
+        opacity: 0.5;
+    }
+}
+
+
+@media (prefers-color-scheme: dark) {
+    div.linenodiv {
+        border-right:1px solid;
+        opacity: 0.5;
+    }
+}
+
 
 /* Code color formatting rules */
 
