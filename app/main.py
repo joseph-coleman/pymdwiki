@@ -453,25 +453,58 @@ async def edit_document(request):
     doc_data["page_name"] = page_name
     doc_data["page_path"] = path
 
-    # doc_data[
-    #     "scripts"
-    # ] = """
-    #         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" integrity="sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP" crossorigin="anonymous">
-    #         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" integrity="sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6" crossorigin="anonymous"></script>
-    #         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js" integrity="sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh" crossorigin="anonymous"></script>
-    #         <script>
-    #             document.addEventListener("DOMContentLoaded", function() {
-    #                 renderMathInElement(document.body, {
-    #                 delimiters: [
-    #                     {left: '\\\\(', right: '\\\\)', display: false},
-    #                     {left: '\\\\[', right: '\\\\]', display: true}
-    #                 ],
-    #                 throwOnError : false
-    #                 });
-    #             });
-    #         </script>"""
+    doc_data[
+        "scripts"
+    ] = """
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.css" integrity="sha384-5TcZemv2l/9On385z///+d7MSYlvIEw9FuZTIdZ14vJLqWphw7e7ZPuOiCHJcFCP" crossorigin="anonymous">
+            <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/katex.min.js" integrity="sha384-cMkvdD8LoxVzGF/RPUKAcvmm49FQ0oxwDF3BGKtDXcEc+T1b2N+teh/OJfpU0jr6" crossorigin="anonymous"></script>
+            <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.22/dist/contrib/auto-render.min.js" integrity="sha384-hCXGrW6PitJEwbkoStFjeJxv+fSOOQKOPbJxSfM6G5sWZjAyWhXiTIIAmQqnlLlh" crossorigin="anonymous"></script>
+            <script>
+                document.addEventListener("DOMContentLoaded", function() {
+                    renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\\\(', right: '\\\\)', display: false},
+                        {left: '\\\\[', right: '\\\\]', display: true}
+                    ],
+                    throwOnError : false
+                    });
+                });
+            </script>"""
 
-    doc_data["scripts"] = ""
+    doc_data[
+        "scripts"
+    ] += """
+    <script>
+    async function editPreview(button){
+        const edit_form = document.querySelector("form[name='edit_document_form']");
+        const textarea_markdown = edit_form.querySelector("textarea[name='markdown']");
+        const input_document_name = edit_form.querySelector("input[name='document_name']");
+        const markdown = textarea_markdown.value;
+        const document_name = input_document_name.value;
+        
+        const formData = new FormData();
+        formData.append("markdown", markdown);
+        formData.append("document_name", document_name);
+        
+        response = await fetch("/api/markdown/", {method:"POST", body: formData});
+        const formatted_markdown = await response.text();
+        
+        const preview_area = document.getElementById("preview_area");
+        preview_area.innerHTML = formatted_markdown;
+        
+                    renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '\\\\(', right: '\\\\)', display: false},
+                        {left: '\\\\[', right: '\\\\]', display: true}
+                    ],
+                    throwOnError : false
+                    });
+        
+        return false; 
+        
+    }
+    </script>
+    """
 
     doc_data["document"] = escape(raw_markdown)
     doc_data["file_path"] = escape(file_path)
@@ -897,10 +930,41 @@ async def markdown_convert_code(request):
     return HTMLResponse(html)
 
 
+async def markdown_convert(request):
+    # This is for the preview button
+    form = await request.form()
+    raw_markdown = form["markdown"]
+    document_name = form["document_name"]
+
+    url_pieces = parse_url_path(document_name)
+    path = url_pieces["path"]
+    # page_name = markdown_page_name(url_pieces)
+
+    # custom extensions need to be configured on creation,
+    # and this one needs the current path
+    all_extensions = MD_EXTENSIONS + [
+        WikiLinkExtension(
+            base_url="/wiki",
+            current_path=path,
+            page_exists_callback=wikilink_page_check,
+        )
+    ]
+
+    md = markdown.Markdown(
+        extensions=all_extensions,
+        extension_configs=MD_EXTENSION_CONFIG,
+        output_format="html",
+    )
+    html = md.convert(raw_markdown)
+
+    return HTMLResponse(html)
+
+
 routes = [
     WebSocketRoute("/ws/run_jupyter", jupyter_websocket_endpoint),
     Route("/manage/{path:path}", endpoint=manage_jupyter, methods=["GET", "POST"]),
     Route("/api/markdown/code/", endpoint=markdown_convert_code, methods=["POST"]),
+    Route("/api/markdown/", endpoint=markdown_convert, methods=["POST"]),
     Route("/index/{path:path}", endpoint=index_document, methods=["GET", "POST"]),
     Route("/delete/{path:path}", endpoint=delete_document, methods=["GET", "POST"]),
     Route("/save/{path:path}", endpoint=save_document, methods=["GET", "POST"]),

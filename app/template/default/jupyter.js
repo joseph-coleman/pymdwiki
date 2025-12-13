@@ -111,9 +111,9 @@ async function update_formatted_code(button){
     formData.append("code", code);
 
     const response = await fetch("/api/markdown/code/", {method:"POST", body: formData});
-    const new_formmated_code = await response.text();
+    const new_formmatted_code = await response.text();
     
-    formattedCode.innerHTML = new_formmated_code;
+    formattedCode.innerHTML = new_formmatted_code;
 }
 
 function runJupyterClear(button){
